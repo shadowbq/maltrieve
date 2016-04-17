@@ -22,7 +22,7 @@ class PluginOne(IPlugin):
     def process_data(self, source, response):
         current_date = str(datetime.date.today())
         data = []
-        soup = bs4.BeautifulSoup(response)
+        soup = bs4.BeautifulSoup(response, "html.parser")
         for t in soup.find_all("table", class_="test"):
             for a in t.find_all("a"):
                 indicator = 'http://' + re.sub('&amp;', '&', a.text)

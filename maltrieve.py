@@ -50,6 +50,16 @@ class config(object):
         self.plugin_dir = './plugins'
 
         try:
+            if self.configp.get('Maltrieve', 'skipssl_verify'):
+                logging.warning("Skipping SSL verification")
+                self.skipssl_verify = self.configp.get('Maltrieve', 'skipssl_verify')
+            if self.skipssl_verify:
+                requests.packages.urllib3.disable_warnings()
+        except Exception as e:
+            logging.warning("Exception: SSL Verify Enforced")
+            self.skipssl_verify = False
+
+        try:
             if self.configp.get('Maltrieve', 'plugin_dir'):
                 self.plugin_dir = self.configp.get('Maltrieve', 'plugin_dir')
         except Exception as e:
@@ -126,9 +136,22 @@ class config(object):
         self.logheaders = self.configp.get('Maltrieve', 'logheaders')
 
         # TODO: Merge these
-        self.vxcage = args.vxcage or self.configp.has_option('Maltrieve', 'vxcage')
-        self.cuckoo = args.cuckoo or self.configp.has_option('Maltrieve', 'cuckoo')
-        self.viper = args.viper or self.configp.has_option('Maltrieve', 'viper')
+        try:
+            if args.vxcage or self.configp.has_option('Maltrieve', 'vxcage'):
+                self.vxcage = self.configp.get('Maltrieve', 'vxcage')
+        except:
+            logging.info("ArgError lingers")
+        try:
+            if args.cuckoo or self.configp.has_option('Maltrieve', 'cuckoo'):
+                self.cuckoo = self.configp.get('Maltrieve', 'cuckoo')
+        except:
+            logging.info("ArgError lingers")
+
+        try:
+            if args.viper or self.configp.has_option('Maltrieve', 'viper'):
+                self.viper = self.configp.get('Maltrieve', 'viper')
+        except:
+            logging.info("ArgError lingers")
 
         # CRITs
         if args.crits or self.configp.has_option('Maltrieve', 'crits'):
@@ -261,7 +284,7 @@ def upload_vxcage(response, md5, cfg):
             # Note that this request does NOT go through proxies
             response = requests.post(url, headers=headers, files=files, data=tags)
             response_data = response.json()
-            logging.info("Submitted %s to VxCage, response was %d", md5, response_data["message"])
+            logging.info("Submitted %s to VxCage, response was %s", md5, response_data["message"])
         except requests.exceptions.ConnectionError:
             logging.info("Could not connect to VxCage, will attempt local storage")
             return False
@@ -328,15 +351,31 @@ def save_malware(response, cfg):
     # Submit to external services
 
     # TODO: merge these
-    if cfg.vxcage:
-        stored = upload_vxcage(response, md5, cfg) or stored
-    if cfg.cuckoo:
-        stored = upload_cuckoo(response, md5, cfg) or stored
-    if cfg.viper:
-        stored = upload_viper(response, md5, cfg) or stored
-    if cfg.crits:
-        stored = upload_crits(response, md5, cfg) or stored
+    try:
+        if cfg.vxcage:
+            stored = upload_vxcage(response, md5, cfg) or stored
+    except AttributeError:
+        pass
+
+    try:
+        if cfg.cuckoo:
+            stored = upload_cuckoo(response, md5, cfg) or stored
+    except AttributeError:
+        pass
+
+    try:
+        if cfg.viper:
+            stored = upload_viper(response, md5, cfg) or stored
+    except AttributeError:
+        pass
+
+    try:
+        if cfg.crits:
+            stored = upload_crits(response, md5, cfg) or stored
     # else save to disk
+    except AttributeError:
+        pass
+
     if not stored:
         if cfg.sort_mime:
             # set folder per mime_type
@@ -432,6 +471,9 @@ def main():
 
     hashes = load_hashes('hashes.json')
     past_urls = load_urls('urls.json')
+
+    if cfg.skipssl_verify:
+        requests.packages.urllib3.disable_warnings()
 
     print 'Loading Plugins'
     # Load the plugins from the plugin directory.
