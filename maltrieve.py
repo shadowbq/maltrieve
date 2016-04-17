@@ -273,11 +273,11 @@ def upload_crits(response, md5, cfg):
             return False
 
 
-def upload_vxcage(response, md5, cfg):
+def upload_vxcage(response, md5, cfg, mime_type):
     if response:
         url_tag = urlparse(response.url)
         files = {'file': (md5, response.content)}
-        tags = {'tags': url_tag.netloc + ',Maltrieve'}
+        tags = {'tags': mime_type + "," + url_tag.netloc + ',Maltrieve'}
         url = "{srv}/malware/add".format(srv=cfg.vxcage)
         headers = {'User-agent': 'Maltrieve'}
         try:
@@ -353,7 +353,7 @@ def save_malware(response, cfg):
     # TODO: merge these
     try:
         if cfg.vxcage:
-            stored = upload_vxcage(response, md5, cfg) or stored
+            stored = upload_vxcage(response, md5, cfg, mime_type) or stored
     except AttributeError:
         pass
 
